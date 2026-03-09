@@ -1,7 +1,6 @@
-/* eslint-disable react-hooks/rules-of-hooks */
 /* eslint-disable @next/next/no-html-link-for-pages */
 "use client"
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 
 // Pre-computed particle positions to avoid Math.random() hydration mismatch
 const PARTICLE_DATA = [
@@ -127,9 +126,8 @@ function useInView(threshold = 0.15) {
 
 export default function LandingPage() {
   const [typedText, setTypedText] = useState("");
-  const [mounted, setMounted] = useState(false);
-  const [scrollY, setScrollY] = useState(0);
   const [navScrolled, setNavScrolled] = useState(false);
+  const [parallaxY, setParallaxY] = useState(0);
   const fullText = "I'm feeling happy today, the weather is beautiful...";
 
   const howItWorks = useInView();
@@ -137,15 +135,22 @@ export default function LandingPage() {
   const personalitySection = useInView();
   const ctaSection = useInView();
 
+  // Nav ref for direct DOM manipulation to avoid hydration issues
+  const navRef = useRef<HTMLElement>(null);
+  const orb1Ref = useRef<HTMLDivElement>(null);
+  const orb2Ref = useRef<HTMLDivElement>(null);
+  const orb3Ref = useRef<HTMLDivElement>(null);
+
+  const handleScroll = useCallback(() => {
+    const sy = window.scrollY;
+    setNavScrolled(sy > 50);
+    setParallaxY(sy);
+  }, []);
+
   useEffect(() => {
-    setMounted(true);
-    const handleScroll = () => {
-      setScrollY(window.scrollY);
-      setNavScrolled(window.scrollY > 50);
-    };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [handleScroll]);
 
   useEffect(() => {
     let i = 0;
@@ -169,11 +174,14 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen overflow-hidden bg-[#0a0a0f] text-white">
       {/* ─── Navbar ─── */}
-      <nav className={`fixed top-0 w-full z-50 transition-all duration-500 ${
-          mounted && navScrolled
-            ? "bg-[#0a0a0f]/80 backdrop-blur-2xl border-b border-white/6 shadow-lg shadow-black/20"
+      <nav
+        ref={navRef}
+        className={`fixed top-0 w-full z-50 transition-all duration-500 ${
+          navScrolled
+            ? "bg-[#0a0a0f]/80 backdrop-blur-2xl border-b border-white/[0.06] shadow-lg shadow-black/20"
             : "bg-transparent"
         }`}
+        suppressHydrationWarning
       >
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <a href="/" className="flex items-center gap-3 group">
@@ -215,54 +223,58 @@ export default function LandingPage() {
 
       {/* ─── Hero Section ─── */}
       <section className="relative min-h-screen flex items-center justify-center pt-20">
-        {/* Parallax background orbs - only apply scroll transforms after mount */}
+        {/* Parallax background orbs */}
         <div className="absolute inset-0 overflow-hidden">
           <div
+            ref={orb1Ref}
             className="absolute w-[700px] h-[700px] bg-amber-500/[0.08] rounded-full blur-[200px]"
             style={{
               top: "15%",
               left: "20%",
-              transform: mounted ? `translateY(${scrollY * 0.1}px)` : "translateY(0px)",
+              transform: `translateY(${parallaxY * 0.1}px)`,
             }}
+            suppressHydrationWarning
           />
           <div
+            ref={orb2Ref}
             className="absolute w-[600px] h-[600px] bg-purple-600/[0.08] rounded-full blur-[200px]"
             style={{
               bottom: "10%",
               right: "15%",
-              transform: mounted ? `translateY(${scrollY * -0.08}px)` : "translateY(0px)",
+              transform: `translateY(${parallaxY * -0.08}px)`,
             }}
+            suppressHydrationWarning
           />
           <div
+            ref={orb3Ref}
             className="absolute w-[400px] h-[400px] bg-pink-500/[0.05] rounded-full blur-[150px]"
             style={{
               top: "50%",
               left: "50%",
-              transform: mounted ? `translate(-50%, -50%) translateY(${scrollY * 0.05}px)` : "translate(-50%, -50%) translateY(0px)",
+              transform: `translate(-50%, -50%) translateY(${parallaxY * 0.05}px)`,
             }}
+            suppressHydrationWarning
           />
         </div>
 
-        {/* Floating particles - using pre-computed data to avoid hydration mismatch */}
-        {mounted && (
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            {PARTICLE_DATA.map((p, i) => (
-              <div
-                key={i}
-                className="particle"
-                style={{
-                  left: `${p.left}%`,
-                  top: `${p.top}%`,
-                  width: `${p.size}px`,
-                  height: `${p.size}px`,
-                  background: p.color,
-                  animationDuration: `${p.duration}s`,
-                  animationDelay: `${p.delay}s`,
-                }}
-              />
-            ))}
-          </div>
-        )}
+        {/* Floating particles - always rendered, animation handled by CSS */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {PARTICLE_DATA.map((p, i) => (
+            <div
+              key={i}
+              className="particle"
+              style={{
+                left: `${p.left}%`,
+                top: `${p.top}%`,
+                width: `${p.size}px`,
+                height: `${p.size}px`,
+                background: p.color,
+                animationDuration: `${p.duration}s`,
+                animationDelay: `${p.delay}s`,
+              }}
+            />
+          ))}
+        </div>
 
         <div className="relative z-10 max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-16 items-center">
           {/* Left: Text content */}
