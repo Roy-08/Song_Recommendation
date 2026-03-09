@@ -9,6 +9,15 @@ import { useAuth } from "@/app/lib/auth-context";
 
 const musicNotes = ["♪", "♫", "♬", "♩", "🎵", "🎶", "🎧", "🎤", "🎸", "🎹"];
 
+// Pre-computed note styles to avoid hydration mismatch
+const NOTE_STYLES = musicNotes.map((n, i) => ({
+  note: n,
+  left: `${5 + i * 10}%`,
+  fontSize: `${16 + (i % 4) * 6}px`,
+  animationDuration: `${9 + (i % 5) * 2}s`,
+  animationDelay: `${i * 1.1}s`,
+}));
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -35,8 +44,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex relative overflow-hidden bg-[#050508]">
-      <style jsx>{`
+    <div className="min-h-svh flex relative overflow-hidden bg-[#050508]">
+        
+      <style dangerouslySetInnerHTML={{ __html: `
         @keyframes floatUp {
           0% { transform: translateY(0) rotate(0deg); opacity: 0; }
           10% { opacity: 0.5; }
@@ -49,18 +59,18 @@ export default function LoginPage() {
           50% { height: 12px; }
           75% { height: 28px; }
         }
-      `}</style>
+      `}} />
 
       {/* Floating notes */}
       {mounted && (
         <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-          {musicNotes.map((n, i) => (
+          {NOTE_STYLES.map((ns, i) => (
             <div key={i} className="absolute" style={{
-              left: `${5 + i * 10}%`, bottom: "-30px", opacity: 0,
-              fontSize: `${16 + (i % 4) * 6}px`,
-              animation: `floatUp ${9 + (i % 5) * 2}s linear infinite`,
-              animationDelay: `${i * 1.1}s`,
-            }}>{n}</div>
+              left: ns.left, bottom: "-30px", opacity: 0,
+              fontSize: ns.fontSize,
+              animation: `floatUp ${ns.animationDuration} linear infinite`,
+              animationDelay: ns.animationDelay,
+            }}>{ns.note}</div>
           ))}
         </div>
       )}
@@ -102,7 +112,7 @@ export default function LoginPage() {
 
           {/* Equalizer */}
           <div className="flex items-end gap-1.5 h-8">
-            {[...Array(14)].map((_, i) => (
+            {Array.from({ length: 14 }).map((_, i) => (
               <div key={i} className="w-2 rounded-full bg-gradient-to-t from-amber-500 to-orange-400"
                 style={{ animation: `eqBar 1.2s ease-in-out infinite`, animationDelay: `${i * 0.08}s`, minHeight: "6px" }} />
             ))}
@@ -135,27 +145,9 @@ export default function LoginPage() {
         </div>
 
         <div className="relative z-10 w-full max-w-[420px] mx-6">
-          {/* Mobile Logo */}
-          <div className="lg:hidden text-center mb-8">
-            <Link href="/" className="inline-flex flex-col items-center gap-3 group">
-              <div className="w-20 h-20 rounded-3xl overflow-hidden shadow-2xl shadow-amber-500/25 group-hover:scale-110 transition-transform ring-2 ring-amber-400/20">
-                <Image src="/peakbotlogo.png" alt="PeakUp" width={80} height={80} className="w-full h-full object-cover" />
-              </div>
-              <h1 className="text-2xl font-bold text-white">PeakUp</h1>
-              <p className="text-xs text-amber-400/80">Song Recommendation AI</p>
-            </Link>
-          </div>
+          
 
-          {/* Mobile decorative image */}
-          <div className="lg:hidden mb-6 rounded-2xl overflow-hidden h-32 relative border border-white/[0.06]">
-            <img
-              src="https://mgx-backend-cdn.metadl.com/generate/images/1012928/2026-03-09/eaa51583-1dc4-4691-af05-1e6b7efb5498.png"
-              alt="Music visualization"
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#050508] via-[#050508]/40 to-transparent" />
-            <div className="absolute bottom-3 left-4 text-white text-sm font-medium">🎵 AI-Powered Music Discovery</div>
-          </div>
+          
 
           {/* Welcome */}
           <div className="mb-8">
