@@ -11,49 +11,44 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-// Read initial theme without triggering setState in an effect
-function getInitialTheme(): Theme {
-  if (typeof window === "undefined") return "dark";
-  try {
-    const saved = localStorage.getItem("peakbot_theme") as Theme | null;
-    if (saved === "dark" || saved === "light") return saved;
-    if (window.matchMedia("(prefers-color-scheme: light)").matches) return "light";
-  } catch {
-    // localStorage may not be available
-  }
-  return "dark";
-}
-
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  // Lazy initializer avoids needing setState in useEffect
-  const [theme, setTheme] = useState<Theme>(getInitialTheme);
-  const [mounted, setMounted] = useState(() => typeof window !== "undefined");
+  // Always default to "dark" for both server and client initial render
+  const [theme, setTheme] = useState<Theme>("dark");
 
-  // Handle SSR hydration - mark as mounted after first render
+  // On mount, read the saved theme from localStorage and apply it
   useEffect(() => {
-    if (!mounted) {
-      // Use requestAnimationFrame to avoid synchronous setState in effect
-      const id = requestAnimationFrame(() => setMounted(true));
-      return () => cancelAnimationFrame(id);
+    let savedTheme: Theme = "dark";
+    try {
+      const stored = localStorage.getItem("peakbot_theme") as Theme | null;
+      if (stored === "dark" || stored === "light") {
+        savedTheme = stored;
+      } else if (window.matchMedia("(prefers-color-scheme: light)").matches) {
+        savedTheme = "light";
+      }
+    } catch {
+      // localStorage may not be available
     }
-  }, [mounted]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTheme(savedTheme);
+  }, []);
 
   // Apply theme to DOM whenever theme changes
   useEffect(() => {
-    if (!mounted) return;
     document.documentElement.classList.remove("dark", "light");
     document.documentElement.classList.add(theme);
-    localStorage.setItem("peakbot_theme", theme);
-  }, [theme, mounted]);
+    try {
+      localStorage.setItem("peakbot_theme", theme);
+    } catch {
+      // localStorage may not be available
+    }
+  }, [theme]);
 
   const toggleTheme = useCallback(() => {
     setTheme((prev) => (prev === "dark" ? "light" : "dark"));
   }, []);
 
-  if (!mounted) {
-    return <div className="min-h-screen bg-[#09090b]" />;
-  }
-
+  // Always render children — never return a placeholder div
+  // This ensures server HTML matches client HTML on first render
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
       {children}
